@@ -1,0 +1,63 @@
+% ========================================================================
+% 三维杆单元（空间桁架单元）计算程序
+% 功能：计算单元长度、方向余弦、刚度矩阵、应变、应力、轴力
+% 输入：节点坐标、材料属性、节点位移
+% 输出：刚度矩阵、应变、应力、轴力
+% ========================================================================
+
+clear; clc;
+
+%% 1. 定义输入数据
+node1 = [0, 0, 0];        % 节点1坐标 [x,y,z]
+node2 = [2, 0, 0];        % 节点2坐标 [x,y,z]
+E = 2e11;               % 弹性模量 (Pa)
+A = 1e-4;                 % 横截面积 (m^2)
+de = [0.00; 0.000; 0.000; 1.0e-3; 0.000; 0.000]; % 节点位移 [u1,v1,w1,u2,v2,w2]' (m)
+
+%% 2. 调用杆单元计算函数
+[Ke, strain, stress, axial_force] = TrussElement(node1, node2, E, A, de);
+
+%% 3. 输出结果
+% 计算长度和方向余弦
+dx = node2(1)-node1(1);
+dy = node2(2)-node1(2);
+dz = node2(3)-node1(3);
+L = sqrt(dx^2+dy^2+dz^2);
+cx = dx/L; cy = dy/L; cz = dz/L;
+
+fprintf('单元长度 L = %.4f m\n', L);
+fprintf('方向余弦: (cx, cy, cz) = (%.4f, %.4f, %.4f)\n', cx, cy, cz);
+fprintf('单元刚度矩阵 Ke (6x6):\n');
+disp(Ke);
+fprintf('单元应变 ε = %.6e\n', strain);
+fprintf('单元应力 σ = %.2f Pa\n', stress);
+fprintf('单元轴力 N = %.2f N\n', axial_force);
+
+% ========================================================================
+% 函数定义 (可放在同一个文件的末尾)
+% ========================================================================
+function [Ke, strain, stress, axial_force] = TrussElement(node1, node2, E, A, de)
+    % 计算长度和方向余弦
+    dx = node2(1) - node1(1);
+    dy = node2(2) - node1(2);
+    dz = node2(3) - node1(3);
+    L = sqrt(dx^2 + dy^2 + dz^2);
+    cx = dx / L;
+    cy = dy / L;
+    cz = dz / L;
+    
+    % 应变-位移矩阵 B (1x6)
+    B = (1/L) * [-cx, -cy, -cz, cx, cy, cz];
+    
+    % 单元刚度矩阵 (全局坐标)
+    k0 = E * A / L;
+    c = [cx; cy; cz];
+    ccT = c * c';           % 3x3 矩阵
+    Ke = k0 * [ ccT, -ccT;
+               -ccT,  ccT ];
+    
+    % 应变、应力、轴力
+    strain = B * de;
+    stress = E * strain;
+    axial_force = stress * A;
+end
