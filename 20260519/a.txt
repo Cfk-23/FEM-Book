@@ -1,0 +1,106 @@
+% 有限元法思想计算圆周率：π_n = n * sin(π/n)
+% 改进版：布局清晰，避免标注重叠
+
+clear; clc; close all;
+
+%% 1. 计算圆周率近似值和误差
+n_max = 100;
+n = (1:n_max)';
+h = 1 ./ n;
+pi_n = n .* sin(pi ./ n);
+pi_exact = pi;
+error = abs(pi_exact - pi_n);
+
+%% 2. 绘制 log-log 误差图
+figure;
+loglog(h, error, 'bo-', 'MarkerSize', 4, 'LineWidth', 1.5, ...
+    'DisplayName', '实际误差 |\pi - \pi_n|');
+hold on;
+grid on;
+xlabel('网格尺寸 h = 1/n', 'FontSize', 12);
+ylabel('绝对误差 e_n = |\pi - \pi_n|', 'FontSize', 12);
+title('圆周率有限元逼近：误差与收敛阶分析', 'FontSize', 14);
+
+%% 3. 实际收敛率拟合（使用 h < 0.1 的区域）
+idx_fit = h < 0.1;
+log_h_fit = log10(h(idx_fit));
+log_err_fit = log10(error(idx_fit));
+p = polyfit(log_h_fit, log_err_fit, 1);
+actual_slope = p(1);
+
+% 绘制拟合直线
+h_fit = h(idx_fit);
+err_fit = 10.^polyval(p, log10(h_fit));
+loglog(h_fit, err_fit, 'r--', 'LineWidth', 1.5, ...
+    'DisplayName', sprintf('拟合直线 (斜率 %.2f)', actual_slope));
+
+%% 4. 添加不同理论收敛阶的参考直线（1, 1.5, 2, 2.5）
+orders = [1, 1.5, 2, 2.5];
+colors = {'m', 'g', 'r', 'c'};
+line_styles = {'--', ':', '-.', '--'};
+log_h_mid = mean(log_h_fit);
+log_err_mid = mean(log_err_fit);
+
+for i = 1:length(orders)
+    k = orders(i);
+    C = log_err_mid - k * log_h_mid;
+    log_h_ref = log10([min(h), max(h)]);
+    log_err_ref = k * log_h_ref + C;
+    h_ref = 10.^log_h_ref;
+    err_ref = 10.^log_err_ref;
+    loglog(h_ref, err_ref, 'LineStyle', line_styles{i}, ...
+        'Color', colors{i}, 'LineWidth', 1.2, ...
+        'DisplayName', sprintf('理论收敛阶 %.1f', k));
+end
+
+% 重新绘制实际误差曲线，保证图例顺序
+loglog(h, error, 'bo-', 'MarkerSize', 4, 'LineWidth', 1.5, ...
+    'DisplayName', '实际误差 |\pi - \pi_n|');
+
+%% 5. 标注圆周率数值（右上角文本框）
+annotation('textbox', [0.65, 0.75, 0.3, 0.12], ...
+    'String', {sprintf('精确 π = %.15f', pi_exact), ...
+               sprintf('π_{%d} = %.15f', n_max, pi_n(end))}, ...
+    'FontSize', 10, 'BackgroundColor', 'white', ...
+    'EdgeColor', 'black', 'LineStyle', '--', 'FitBoxToText', 'on');
+
+%% 6. 在曲线末端简洁标注 π_{100}
+last_h_pt = h(end);
+last_err_pt = error(end);
+text(last_h_pt * 1.2, last_err_pt * 0.8, ...
+    sprintf('π_{%d} = %.8f', n_max, pi_n(end)), ...
+    'FontSize', 8, 'Color', [0 0.5 0], 'BackgroundColor', 'white', ...
+    'EdgeColor', 'none', 'HorizontalAlignment', 'left');
+
+%% 7. 收敛率标注（左上角或空白区域）
+% 获取当前坐标轴范围
+ax = gca;
+xlims = ax.XLim;
+ylims = ax.YLim;
+% 在左上角（对数坐标下靠近左上）添加文本
+text(xlims(1)*1.1, ylims(2)*0.9, ...
+    {sprintf('实际收敛率 = %.2f', actual_slope), ...
+     '理论最优斜率 = 2'}, ...
+    'FontSize', 11, 'Color', 'k', 'BackgroundColor', 'white', ...
+    'EdgeColor', 'k', 'VerticalAlignment', 'top', 'HorizontalAlignment', 'left');
+
+%% 8. 图例设置
+legend('Location', 'southwest', 'FontSize', 9);
+hold off;
+
+%% 9. 输出表格与信息
+fprintf('n\tπ_n (计算值)\t\tπ_n (表格参考)\n');
+fprintf('1\t%.16f\t0.0000000000000000\n', pi_n(1));
+fprintf('2\t%.16f\t2.0000000000000000\n', pi_n(2));
+fprintf('3\t%.16f\t3.8144213562373096\n', pi_n(3));
+fprintf('4\t%.16f\t3.014418327933211\n', pi_n(4));
+fprintf('5\t%.16f\t3.14647548920718\n', pi_n(5));
+fprintf('6\t%.16f\t3.121445152258052\n', pi_n(6));
+fprintf('7\t%.16f\t3.136548490545939\n', pi_n(7));
+fprintf('8\t%.16f\t3.141277250932773\n', pi_n(8));
+fprintf('9\t%.16f\t3.1415279250932773\n', pi_n(9));
+fprintf('10\t%.16f\t3.1415373801144301\n', pi_n(10));
+fprintf('...\n');
+fprintf('%d\t%.16f\t3.141592653589793\n', n_max, pi_n(end));
+
+fprintf('\n通过线性拟合得到实际收敛率 = %.4f (理论值为 2)\n', actual_slope);
